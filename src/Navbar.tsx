@@ -13,7 +13,10 @@ const Navbar: React.FC = () => {
         }
     };
 
-    const isActive = (path: string) => location.pathname === path ? 'active' : '';
+    const isActive = (path: string) => {
+        const currentPath = location.hash.replace(/^#/, '') || '/';
+        return currentPath === path ? 'active' : '';
+    };
 
     return (
         <nav className="navbar">
@@ -21,16 +24,16 @@ const Navbar: React.FC = () => {
                 <h1 className="nav-logo">{getPageTitle()}</h1>
                 <ul className="nav-menu">
                     <li className="nav-item">
-                        <Link to="/" className={`nav-link ${isActive('/')}`}>Home</Link>
+                        <Link to="#/" className={`nav-link ${isActive('/')}`}>Home</Link>
                     </li>
                     <li className="nav-item">
-                        <Link to="/github-repos" className={`nav-link ${isActive('/github-repos')}`}>GitHub Repos</Link>
+                        <Link to="#/github-repos" className={`nav-link ${isActive('/github-repos')}`}>GitHub Repos</Link>
                     </li>
                     <li className="nav-item">
-                        <Link to="/anime-facts" className={`nav-link ${isActive('/anime-facts')}`}>Anime Facts</Link>
+                        <Link to="#/anime-facts" className={`nav-link ${isActive('/anime-facts')}`}>Anime Facts</Link>
                     </li>
                     <li className="nav-item">
-                        <Link to="/dota-rankings" className={`nav-link ${isActive('/dota-rankings')}`}>Dota 2 Rankings</Link>
+                        <Link to="#/dota-rankings" className={`nav-link ${isActive('/dota-rankings')}`}>Dota 2 Rankings</Link>
                     </li>
                 </ul>
             </div>
