@@ -1,266 +1,321 @@
 import React, { useState, useEffect } from 'react';
 
 interface Anime {
-  mal_id: number;
-  title: string;
-  images: {
-    jpg: {
-      image_url: string;
+    mal_id: number;
+    title: string;
+    images: {
+        jpg: {
+            image_url: string;
+        };
     };
-  };
 }
 
 interface AnimeDetail {
-  mal_id: number;
-  title: string;
-  images: {
-    jpg: {
-      image_url: string;
+    mal_id: number;
+    title: string;
+    images: {
+        jpg: {
+            image_url: string;
+        };
     };
-  };
-  synopsis: string;
-  background: string;
-  aired: {
-    from: string;
-  };
-  genres: Array<{ name: string }>;
-  studios: Array<{ name: string }>;
-  rating: string;
-  themes: Array<{ name: string }>;
-  demographics: Array<{ name: string }>;
-  score: number;
-  episodes: number;
-  status: string;
+    synopsis: string;
+    background: string;
+    aired: {
+        from: string;
+    };
+    genres: Array<{ name: string }>;
+    studios: Array<{ name: string }>;
+    rating: string;
+    themes: Array<{ name: string }>;
+    demographics: Array<{ name: string }>;
+    score: number;
+    episodes: number;
+    status: string;
 }
 
 interface AnimeFact {
-  fact_id: number;
-  fact: string;
+    fact_id: number;
+    fact: string;
 }
 
+interface AnimeHeader {
+    type: 'header';
+    title: string;
+    image?: string;
+    score?: number;
+    episodes?: number;
+    status?: string;
+}
+
+type DisplayItem = AnimeFact | AnimeHeader;
+
 const AnimeFacts: React.FC = () => {
-  const [animes, setAnimes] = useState<Anime[]>([]);
-  const [selectedAnime, setSelectedAnime] = useState<string>('');
-  const [facts, setFacts] = useState<AnimeFact[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
-  const [factCount, setFactCount] = useState<string>('5');
+    const [animes, setAnimes] = useState<Anime[]>([]);
+    const [selectedAnime, setSelectedAnime] = useState<string>('');
+    const [displayItems, setDisplayItems] = useState<DisplayItem[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>('');
+    const [factCount, setFactCount] = useState<string>('5');
 
-  useEffect(() => {
-    const loadAnimeList = async () => {
-      setLoading(true);
+    useEffect(() => {
+        const loadAnimeList = async () => {
+            setLoading(true);
 
-      try {
-        const response = await fetch('https://api.jikan.moe/v4/top/anime?limit=20');
+            try {
+                const response = await fetch('https://api.jikan.moe/v4/top/anime?limit=20');
 
-        if (!response.ok) {
-          throw new Error(`API error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`API error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.data) {
+                    setAnimes(data.data);
+                    if (data.data.length > 0) {
+                        setSelectedAnime(data.data[0].mal_id.toString());
+                    }
+                } else {
+                    throw new Error('Invalid API response format');
+                }
+            } catch (error) {
+                console.error('Error loading anime list:', error);
+                setError('Failed to load anime list. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadAnimeList();
+    }, []);
+
+    const loadAnimeFacts = async () => {
+        if (!selectedAnime) {
+            setError('Please select an anime first!');
+            return;
         }
 
-        const data = await response.json();
+        setLoading(true);
+        setError('');
+        setDisplayItems([]);
 
-        if (data.data) {
-          setAnimes(data.data);
-          if (data.data.length > 0) {
-            setSelectedAnime(data.data[0].mal_id.toString());
-          }
-        } else {
-          throw new Error('Invalid API response format');
+        try {
+            const selectedAnimeData = animes.find(a => a.mal_id.toString() === selectedAnime);
+
+            if (!selectedAnimeData) {
+                throw new Error('Selected anime not found');
+            }
+
+            const response = await fetch(`https://api.jikan.moe/v4/anime/${selectedAnime}`);
+
+            if (!response.ok) {
+                throw new Error(`API error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            displayAnimeInfo(data.data, selectedAnimeData, parseInt(factCount));
+
+        } catch (error) {
+            console.error('Error loading anime facts:', error);
+            setError('Failed to load anime information. Please try again.');
+        } finally {
+            setLoading(false);
         }
-      } catch (error) {
-        console.error('Error loading anime list:', error);
-        setError('Failed to load anime list. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
     };
 
-    loadAnimeList();
-  }, []);
+    const generateFactsFromData = (anime: AnimeDetail, count: number): AnimeFact[] => {
+        const facts: AnimeFact[] = [];
 
-  const loadAnimeFacts = async () => {
-    if (!selectedAnime) {
-      setError('Please select an anime first!');
-      return;
-    }
+        if (anime.synopsis) {
+            facts.push({
+                fact_id: 1,
+                fact: `Synopsis: ${anime.synopsis.substring(0, 200)}...`
+            });
+        }
 
-    setLoading(true);
-    setError('');
-    setFacts([]);
+        if (anime.background) {
+            facts.push({
+                fact_id: 2,
+                fact: `Background: ${anime.background.substring(0, 150)}...`
+            });
+        }
 
-    try {
-      const selectedAnimeData = animes.find(a => a.mal_id.toString() === selectedAnime);
+        if (anime.aired?.from) {
+            const date = new Date(anime.aired.from).getFullYear();
+            facts.push({
+                fact_id: 3,
+                fact: `First aired in ${date}`
+            });
+        }
 
-      if (!selectedAnimeData) {
-        throw new Error('Selected anime not found');
-      }
+        if (anime.genres?.length > 0) {
+            const genres = anime.genres.map(g => g.name).join(', ');
+            facts.push({
+                fact_id: 4,
+                fact: `Genres: ${genres}`
+            });
+        }
 
-      const response = await fetch(`https://api.jikan.moe/v4/anime/${selectedAnime}`);
+        if (anime.studios?.length > 0) {
+            const studios = anime.studios.map(s => s.name).join(', ');
+            facts.push({
+                fact_id: 5,
+                fact: `Studio: ${studios}`
+            });
+        }
 
-      if (!response.ok) {
-        throw new Error(`API error! status: ${response.status}`);
-      }
+        if (anime.rating) {
+            facts.push({
+                fact_id: 6,
+                fact: `Rating: ${anime.rating}`
+            });
+        }
 
-      const data = await response.json();
-      displayAnimeInfo(data.data, selectedAnimeData, parseInt(factCount));
+        if (anime.themes?.length > 0) {
+            const themes = anime.themes.map(t => t.name).join(', ');
+            facts.push({
+                fact_id: 7,
+                fact: `Themes: ${themes}`
+            });
+        }
 
-    } catch (error) {
-      console.error('Error loading anime facts:', error);
-      setError('Failed to load anime information. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (anime.demographics?.length > 0) {
+            const demographics = anime.demographics.map(d => d.name).join(', ');
+            facts.push({
+                fact_id: 8,
+                fact: `Demographic: ${demographics}`
+            });
+        }
 
-  const generateFactsFromData = (anime: AnimeDetail, count: number): AnimeFact[] => {
-    const facts: AnimeFact[] = [];
+        return facts.slice(0, count);
+    };
 
-    if (anime.synopsis) {
-      facts.push({
-        fact_id: 1,
-        fact: `Synopsis: ${anime.synopsis.substring(0, 200)}...`
-      });
-    }
+    const displayAnimeInfo = (animeDetail: AnimeDetail, animeBasic: Anime, factCount: number) => {
+        const facts = generateFactsFromData(animeDetail, factCount);
 
-    if (anime.background) {
-      facts.push({
-        fact_id: 2,
-        fact: `Background: ${anime.background.substring(0, 150)}...`
-      });
-    }
+        const header: AnimeHeader = {
+            type: 'header',
+            title: animeBasic.title,
+            image: animeBasic.images?.jpg?.image_url,
+            score: animeDetail.score,
+            episodes: animeDetail.episodes,
+            status: animeDetail.status
+        };
 
-    if (anime.aired?.from) {
-      const date = new Date(anime.aired.from).getFullYear();
-      facts.push({
-        fact_id: 3,
-        fact: `First aired in ${date}`
-      });
-    }
+        setDisplayItems([header, ...facts]);
+    };
 
-    if (anime.genres?.length > 0) {
-      const genres = anime.genres.map(g => g.name).join(', ');
-      facts.push({
-        fact_id: 4,
-        fact: `Genres: ${genres}`
-      });
-    }
+    const clearData = () => {
+        setDisplayItems([]);
+        setError('');
+    };
 
-    if (anime.studios?.length > 0) {
-      const studios = anime.studios.map(s => s.name).join(', ');
-      facts.push({
-        fact_id: 5,
-        fact: `Studio: ${studios}`
-      });
-    }
+    return (
+        <main className="main-content">
+            <div className="container">
+                <h2>Random Anime Facts</h2>
 
-    if (anime.rating) {
-      facts.push({
-        fact_id: 6,
-        fact: `Rating: ${anime.rating}`
-      });
-    }
+                <div className="controls">
+                    <label htmlFor="animeSelect">Select Anime:</label>
+                    <select
+                        id="animeSelect"
+                        value={selectedAnime}
+                        onChange={(e) => setSelectedAnime(e.target.value)}
+                        disabled={loading}
+                    >
+                        {animes.length === 0 ? (
+                            <option value="">Select an anime...</option>
+                        ) : (
+                            <>
+                                <option value="">Select an anime...</option>
+                                {animes.map((anime) => (
+                                    <option key={anime.mal_id} value={anime.mal_id.toString()}>
+                                        {anime.title}
+                                    </option>
+                                ))}
+                            </>
+                        )}
+                    </select>
 
-    if (anime.themes?.length > 0) {
-      const themes = anime.themes.map(t => t.name).join(', ');
-      facts.push({
-        fact_id: 7,
-        fact: `Themes: ${themes}`
-      });
-    }
+                    <label htmlFor="factCount">Facts to show:</label>
+                    <select
+                        id="factCount"
+                        value={factCount}
+                        onChange={(e) => setFactCount(e.target.value)}
+                    >
+                        <option value="3">3</option>
+                        <option value="5">5</option>
+                        <option value="7">7</option>
+                    </select>
 
-    if (anime.demographics?.length > 0) {
-      const demographics = anime.demographics.map(d => d.name).join(', ');
-      facts.push({
-        fact_id: 8,
-        fact: `Demographic: ${demographics}`
-      });
-    }
+                    <button id="loadFacts" className="btn" onClick={loadAnimeFacts} disabled={loading}>
+                        Get Anime Facts!
+                    </button>
+                    <button id="clearFacts" className="btn btn-secondary" onClick={clearData}>
+                        Clear
+                    </button>
+                </div>
 
-    return facts.slice(0, count);
-  };
+                <p style={{ fontSize: '0.9rem', color: '#666', textAlign: 'center', marginTop: '-1.5rem', marginBottom: '1.0rem' }}>
+                    Если некоторые картинки не загружаются, стоит использовать VPN
+                </p>
 
-  const displayAnimeInfo = (animeDetail: AnimeDetail, animeBasic: Anime, factCount: number) => {
-    const facts = generateFactsFromData(animeDetail, factCount);
-    setFacts(facts);
-  };
 
-  const clearData = () => {
-    setFacts([]);
-    setError('');
-  };
+                <div id="loading" className={`loading ${loading ? '' : 'hidden'}`}>
+                    <div className="spinner"></div>
+                    <p>Loading anime facts...</p>
+                </div>
 
-  return (
-    <main className="main-content">
-      <div className="container">
-        <h2>Random Anime Facts</h2>
-        
-        <div className="controls">
-          <label htmlFor="animeSelect">Select Anime:</label>
-          <select 
-            id="animeSelect" 
-            value={selectedAnime}
-            onChange={(e) => setSelectedAnime(e.target.value)}
-            disabled={loading}
-          >
-            {animes.length === 0 ? (
-              <option value="">Select an anime...</option>
-            ) : (
-              <>
-                <option value="">Select an anime...</option>
-                {animes.map((anime) => (
-                  <option key={anime.mal_id} value={anime.mal_id.toString()}>
-                    {anime.title}
-                  </option>
-                ))}
-              </>
-            )}
-          </select>
-          
-          <label htmlFor="factCount">Facts to show:</label>
-          <select 
-            id="factCount" 
-            value={factCount}
-            onChange={(e) => setFactCount(e.target.value)}
-          >
-            <option value="3">3</option>
-            <option value="5">5</option>
-            <option value="7">7</option>
-          </select>
-          
-          <button id="loadFacts" className="btn" onClick={loadAnimeFacts} disabled={loading}>
-            Get Anime Facts!
-          </button>
-          <button id="clearFacts" className="btn btn-secondary" onClick={clearData}>
-            Clear
-          </button>
-        </div>
 
-        <p style={{ fontSize: '0.9rem', color: '#666', textAlign: 'center', marginTop: '-1.5rem', marginBottom: '1.0rem' }}>
-          Если некоторые картинки не загружаются, стоит использовать VPN
-        </p>
+                <div id="error" className={`error ${error ? '' : 'hidden'}`}>
+                    <p>{error}</p>
+                </div>
 
-        
-        <div id="loading" className={`loading ${loading ? '' : 'hidden'}`}>
-          <div className="spinner"></div>
-          <p>Loading anime facts...</p>
-        </div>
+                <div id="factsContainer" className="facts-container">
+                    {displayItems.map((item, index) => {
+                        if ('type' in item && item.type === 'header') {
+                            return (
+                                <div key="header" className="fact-card anime-header-card">
+                                    <h3 style={{ marginBottom: '1rem', fontSize: '1.5rem' }}>{item.title}</h3>
+                                    {item.image && (
+                                        <img
+                                            src={item.image}
+                                            alt={item.title}
+                                            style={{
+                                                maxWidth: '200px',
+                                                borderRadius: '8px',
+                                                marginBottom: '1rem',
+                                                border: '3px solid white'
+                                            }}
+                                        />
+                                    )}
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        gap: '1rem',
+                                        flexWrap: 'wrap',
+                                        marginTop: '1rem'
+                                    }}>
+                                        {item.score && <span>⭐ {item.score}/10</span>}
+                                        {item.episodes && <span>🎬 {item.episodes} eps</span>}
+                                        {item.status && <span>📊 {item.status}</span>}
+                                    </div>
+                                </div>
+                            );
+                        }
 
-        
-        <div id="error" className={`error ${error ? '' : 'hidden'}`}>
-          <p>{error}</p>
-        </div>
-
-        <div id="factsContainer" className="facts-container">
-          {facts.map((fact, index) => (
-            <div key={index} className="fact-card">
-              <div className="fact-number">Fact #{fact.fact_id}</div>
-              <div className="fact-text">{fact.fact}</div>
+                        const fact = item as AnimeFact;
+                        return (
+                            <div key={index} className="fact-card">
+                                <div className="fact-number">Fact #{fact.fact_id}</div>
+                                <div className="fact-text">{fact.fact}</div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </main>
-  );
+        </main>
+    );
 };
 
 export default AnimeFacts;
