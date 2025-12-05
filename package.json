@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "postbuild": "node scripts/404.js",
+    "postbuild": "node scripts/404.cjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
