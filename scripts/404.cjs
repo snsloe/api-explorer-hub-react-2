@@ -6,8 +6,8 @@ const indexFile = path.join(distDir, 'index.html');
 const targetFile = path.join(distDir, '404.html');
 
 if (!fs.existsSync(indexFile)) {
-  console.error('Error: dist/index.html not found — run build first.');
-  process.exit(1);
+    console.error('Error: dist/index.html not found — run build first.');
+    process.exit(1);
 }
 
 fs.copyFileSync(indexFile, targetFile);
